@@ -1,0 +1,103 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  otlp/tempo:
+    endpoint: "tempo:4317"  # Inside the network, uses container port 4317
+    tls:
+      insecure: true
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+  zipkin:
+    endpoint: "http://zipkin:9411/api/v2/spans"
+    format: proto
+  debug:
+    verbosity: detailed
+
+processors:
+  batch:
+
+extensions:
+  health_check:
+  pprof:
+    endpoint: :1888
+  zpages:
+    endpoint: :55679
+
+service:
+  extensions: [pprof, zpages, health_check]
+  telemetry:
+    logs:
+      level: debug
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/tempo, zipkin, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus, debug]
+
+
+
+
+
+#*******************************************
+# if we want use jaeger as exporter comment out this section and comment above section
+
+
+#receivers:
+#  otlp:
+#    protocols:
+#      grpc:
+#        endpoint: 0.0.0.0:4317
+#      http:
+#        endpoint: 0.0.0.0:4318
+#
+#exporters:
+#  otlp/jaeger:
+#    endpoint: "jaeger:4317"
+#    tls:
+#      insecure: true
+#  prometheus:
+#    endpoint: "0.0.0.0:8889"
+#  zipkin:
+#    endpoint: "http://zipkin:9411/api/v2/spans"
+#    format: proto
+#  debug:  
+#    verbosity: detailed
+#    
+#processors:
+#  batch:
+#    
+#extensions:
+#  health_check:
+#  pprof:
+#    endpoint: :1888
+#  zpages:
+#    endpoint: :55679
+#    
+#service:
+#  extensions: [pprof, zpages, health_check]
+#  telemetry:
+#    logs:
+#      level: debug
+#  pipelines:
+#    traces:
+#      receivers: [otlp]
+#      processors: [batch]
+#      exporters: [otlp/jaeger,zipkin,debug]
+##      exporters: [otlp/jaeger,debug]
+#    metrics:
+#      receivers: [otlp]
+#      processors: [batch]
+#      exporters: [prometheus ,debug ]
+#      
+
+

@@ -1,0 +1,32 @@
+dotnet run --environment Development
+docker-compose -f docker-compose.yml -f docker-compose.local.yml up
+
+
+Local Debugging
+docker-compose -f docker-compose.yml -f docker-compose.local.yml up
+cd Demo.WebApi && dotnet run --urls "http://localhost:5000" --environment Development
+cd Demo.WebApp && dotnet run --urls "http://localhost:5001" --environment Development
+
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+dotnet run --urls "http://localhost:5000" --environment Development
+
+Production
+
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build --scale demo-web-api=2 --scale demo-web-app=2
+
+docker-compose -f docker-compose.yml  --environment Production
+
+
+
+netstat -a -n -o | findstr "8889"
+netstat -a -n -o | findstr "4317"
+
+taskkill /PID <pid> /F
+
+
+docker exec -it --user root prometheus ping jaeger
+
+ docker-compose down --remove-orphans
+  docker system prune -f
+ 

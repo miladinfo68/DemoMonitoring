@@ -1,0 +1,323 @@
+#version: '3.8'
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  loki_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./configs/persists/loki-data
+      o: bind
+      
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./configs/persists/grafana-data
+      o: bind
+      
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./configs/persists/prometheus-data
+      o: bind
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes:
+      - prometheus_data:/prometheus
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - otel-collector
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: ["--config.file=/etc/loki/loki.yml"]
+    volumes:
+      - loki_data:/loki
+      - ./configs/loki.yml:/etc/loki/loki.yml
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+      - prometheus
+      - tempo
+      - zipkin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana-datasource.yml:/etc/grafana/provision/datasources/datasources.yml
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - monitoring
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - monitoring
+
+  tempo:
+    image: grafana/tempo:2.4.0
+    container_name: tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./configs/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "14268:14268"  # Legacy Jaeger Thrift HTTP
+      - "4319:4317"    # OTLP gRPC mapped to 4319 on host to avoid conflict
+      - "4320:4318"    # OTLP HTTP mapped to 4320 on host
+      - "3200:3200"    # Tempo API/UI
+    networks:
+      - monitoring
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector.yml"]
+    volumes:
+      - ./configs/otel-collector.yml:/etc/otel-collector.yml
+    restart: on-failure
+    ports:
+      - "4317:4317"   # otel gRPC receiver (kept as primary OTLP entry)
+      - "4318:4318"   # otel http receiver
+      - "13133:13133" # health_check extension
+      - "1888:1888"   # pprof extension
+      - "8888:8888"   # prometheus metrics exposed by the collector
+      - "8889:8889"   # Prometheus exporter metrics
+      - "55679:55679" # zpages extension
+    networks:
+      - monitoring
+
+  demo-web-api:
+    container_name: demo-web-api
+    build:
+      context: .
+      dockerfile: Demo.WebApi/Dockerfile
+    ports:
+      - "5100:80"
+    depends_on:
+      - loki
+      - zipkin
+      - prometheus
+      - otel-collector
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - TodoApiBaseUrl=http://demo-web-api:80
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+    networks:
+      - monitoring
+
+  demo-web-app:
+    container_name: demo-web-app
+    build:
+      context: .
+      dockerfile: Demo.WebApp/Dockerfile
+    ports:
+      - "5200:80"
+    depends_on:
+      - loki
+      - zipkin
+      - prometheus
+      - otel-collector
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+    networks:
+      - monitoring
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# use this block when we want to use jaeger as exporter
+
+
+
+
+##version: '3.8'
+#
+#networks:
+#  monitoring:
+#    driver: bridge
+#
+#volumes:
+#  loki_data:
+#    driver: local
+#  grafana_data:
+#    driver: local
+#  prometheus_data:
+#    driver: local
+#
+#services:
+#
+#  prometheus:
+#    image: prom/prometheus:latest
+#    container_name: prometheus
+#    ports:
+#      - "9090:9090"
+#    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+#    volumes:
+#      - prometheus_data:/prometheus
+#      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+#    depends_on:
+#      - otel-collector
+#    networks:
+#      - monitoring
+#
+#  loki:
+#    image: grafana/loki:latest
+#    container_name: loki
+#    ports:
+#      - "3100:3100"
+#    command: ["--config.file=/etc/loki/loki.yml"]
+#    volumes:
+#      - loki_data:/loki
+#      - ./configs/loki.yml:/etc/loki/loki.yml
+#    networks:
+#      - monitoring   
+#
+#  grafana:
+#    image: grafana/grafana:latest
+#    container_name: grafana
+#    ports:
+#      - "3000:3000"
+#    depends_on:
+#      - loki
+#      - prometheus
+#      - jaeger
+#      - zipkin
+#    volumes:
+#      - grafana_data:/var/lib/grafana
+#    environment:
+#      - GF_SECURITY_ADMIN_PASSWORD=admin
+#    networks:
+#      - monitoring   
+#
+#  zipkin:
+#    image: openzipkin/zipkin:latest
+#    container_name: zipkin
+#    ports:
+#      - "9411:9411"
+#    networks:
+#      - monitoring    
+#
+#  jaeger:
+#    image: jaegertracing/all-in-one:latest
+#    container_name: jaeger
+#    volumes:
+#      - "./configs/jaeger-ui.json:/etc/jaeger/jaeger-ui.json"
+#    command: --query.ui-config /etc/jaeger/jaeger-ui.json
+#    environment:
+#      - METRICS_STORAGE_TYPE=prometheus
+#      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+#    ports:
+#      - "14250:14250"
+#      - "14268:14268"
+#      - "6831:6831/udp"
+#      - "16686:16686"
+#      - "16685:16685"
+#    networks:
+#      - monitoring
+#
+#  otel-collector:
+#    image: otel/opentelemetry-collector:latest
+#    container_name: otel-collector
+#    command: ["--config=/etc/otel-collector.yml"]
+#    volumes:
+#      - ./configs/otel-collector.yml:/etc/otel-collector.yml
+#    restart: on-failure
+#    ports:
+#      - "4317:4317"   # otel gRPC receiver
+#      - "4318:4318"   # otel http receiver
+#      - "13133:13133" # health_check extension
+#      - "1888:1888"   # pprof extension
+#      - "8888:8888"   # prometheus metrics exposed by the collector
+#      - "8889:8889"   # Prometheus exporter metrics
+#      - "55679:55679" # zpages extension
+#    networks:
+#      - monitoring
+#
+#  demo-web-api:
+#    container_name: demo-web-api
+#    build:
+#      context: .
+#      dockerfile: Demo.WebApi/Dockerfile
+#    ports:
+#      - "5100:80"
+#    depends_on:
+#      - loki
+#      - zipkin
+#      - prometheus
+#      - otel-collector
+#    environment:
+#      - ASPNETCORE_ENVIRONMENT=Production
+#      - ASPNETCORE_URLS=http://+:80
+#      - TodoApiBaseUrl=http://demo-web-api:80
+#      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+#    networks:
+#      - monitoring
+#
+#  demo-web-app:
+#    container_name: demo-web-app
+#    build:
+#      context: .
+#      dockerfile: Demo.WebApp/Dockerfile
+#    ports:
+#      - "5200:80"
+#    depends_on:
+#      - loki
+#      - zipkin
+#      - prometheus
+#      - otel-collector
+#    environment:
+#      - ASPNETCORE_ENVIRONMENT=Production
+#      - ASPNETCORE_URLS=http://+:80
+#      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+#    networks:
+#      - monitoring
+
+
+
+
+
+  
+

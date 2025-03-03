@@ -1,0 +1,74 @@
+#version: '3.8'
+
+services:
+  loki:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+
+  grafana:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+
+  zipkin:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+
+#  jaeger:
+#    deploy:
+#      replicas: 1
+#      resources:
+#        limits:
+#          cpus: "0.5"
+#          memory: "512M"
+          
+  tempo:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+          
+  prometheus:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+
+  otel-collector:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+          
+  demo-web-api:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+            
+  demo-web-app:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"            

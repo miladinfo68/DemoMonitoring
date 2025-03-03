@@ -1,0 +1,45 @@
+﻿@page "/todos"
+@using Demo.Shared.Models
+@inject TodoService TodoService
+
+<h3>Todo List</h3>
+
+@switch (_todos)
+{
+    case { Count: <= 0 }:
+        <p>No todos found.</p>
+        break;
+    case { Count: > 0 }:
+    {
+        <table class="table">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Completed</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var todo in _todos)
+            {
+                <tr>
+                    <td>@todo.Id</td>
+                    <td>@todo.Title</td>
+                    <td>@(todo.IsCompleted ? "Yes" : "No")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        break;
+    }
+}
+
+@code {
+    private List<Todo> _todos=[];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _todos = await TodoService.GetTodosAsync();
+    }
+
+}
