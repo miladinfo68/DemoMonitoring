@@ -126,7 +126,6 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:80
-      - TodoApiBaseUrl=http://demo-web-api:80
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
     networks:
       - monitoring
@@ -147,6 +146,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:80
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - TodoApiBaseUrl=http://demo-web-api:80
     networks:
       - monitoring
 
